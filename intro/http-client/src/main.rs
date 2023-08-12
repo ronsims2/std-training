@@ -1,8 +1,8 @@
-use anyhow::{bail, Result};
+use anyhow::{Result};
 use core::str;
 use embedded_svc::{
-    http::{client::Client, Status},
-    io::Read,
+    http::{client::Client as HttpClient, Method},
+    utils::io,
 };
 use esp_idf_hal::prelude::Peripherals;
 use esp_idf_svc::{
@@ -10,6 +10,7 @@ use esp_idf_svc::{
     http::client::{Configuration, EspHttpConnection},
 };
 use wifi::wifi;
+
 
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 use esp_idf_sys as _;
@@ -47,22 +48,37 @@ fn main() -> Result<()> {
 
 fn get(url: impl AsRef<str>) -> Result<()> {
     // 1. Create a new EspHttpConnection with default Configuration. (Check documentation)
-
+    let default_config = Configuration::default();
+    let conn = EspHttpConnection::new(&default_config);
     // 2. Get a client using the Client::wrap method. (Check documentation)
+    let mut client = HttpClient::wrap(conn?);
 
     // 3. Open a GET request to `url`
-
+    let headers = [("accept", "text/plain"), ("connection", "close")];
+    let req = client.request(Method::Get, url.as_ref(), &headers)?;
     // 4. Submit the request and check the status code of the response.
-    // let response = request...;
-    // let status = ...;
-    // println!("Response code: {}\n", status);
-    // match status {
-    // Successful http status codes are in the 200..=299 range.
+    let mut resp = req.submit()?;
+    let status = resp.status();
+    println!("Response code: {}\n", status);
+    let ok_status_range = 200..299;
+    if ok_status_range.contains(&status) {
+        let (_headers, mut body) = resp.split();
+        let mut buf = [0u8; 1024];
+        let bytes_read = io::try_read_full(&mut body, &mut buf).map_err(|e| e.0)?;
+        println!("Read {} bytes", bytes_read);
 
-    // 5. If the status is OK, read response data chunk by chunk into a buffer and print it until done.
-
-    // 6. Try converting the bytes into a Rust (UTF-8) string and print it.
-    // }
+        match std::str::from_utf8(&buf[0..bytes_read]) {
+            Ok(body_string) => println!(
+            "Response body (truncated to {} bytes): {:?}",
+            buf.len(),
+            body_string
+        ),
+            Err(e) => println!("Error decoding response body: {}", e),
+        };
+    } else {
+        let err_msg = format!("Error fetching url: {}", url.as_ref());
+        println!("{}", &err_msg);
+    }
 
     Ok(())
 }
