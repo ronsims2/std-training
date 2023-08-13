@@ -62,22 +62,25 @@ fn get(url: impl AsRef<str>) -> Result<()> {
     println!("Response code: {}\n", status);
     let ok_status_range = 200..299;
     if ok_status_range.contains(&status) {
-        let (_headers, mut body) = resp.split();
+        let (_headers, body) = resp.split();
         let mut buf = [0u8; 1024];
-        let mut total_bytes_read = 0u8;
+        let mut total_bytes_read = 0;
 
         loop {
             match body.read(&mut buf) {
-                Ok(0) => (),
+                Ok(0) => {
+                    println!("Total bytes read: {}", total_bytes_read);
+                    break Ok(());
+                },
                 Ok(bytes_read) => {
                     match std::str::from_utf8(&buf[0..bytes_read]) {
                         Ok(text) => {
+                            println!("Bytes read: {}", bytes_read);
                             println!("{}", text);
                         },
                         Err(e) => bail!("Uh-oh, could read that HTML: {}", e)
                     }
-                    total_bytes_read += bytes_read as u8;
-                    return Ok(());
+                    total_bytes_read += bytes_read as u64;
                 },
                 Err(e) => bail!("Error reading from buffer: {}", e)
             }
