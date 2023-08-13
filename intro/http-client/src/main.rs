@@ -1,8 +1,7 @@
 use anyhow::{Result};
 use core::str;
 use embedded_svc::{
-    http::{client::Client as HttpClient, Method},
-    utils::io,
+    http::{client::Client as HttpClient, Method}
 };
 use esp_idf_hal::prelude::Peripherals;
 use esp_idf_svc::{
@@ -65,24 +64,25 @@ fn get(url: impl AsRef<str>) -> Result<()> {
     if ok_status_range.contains(&status) {
         let (_headers, mut body) = resp.split();
         let mut buf = [0u8; 1024];
-        let mut bytes_read = 0;
-        loop {
-            let len = match body.read(&mut buf) {
-                Ok(0) => return Ok(()),
-                Ok(len) => len,
-                // Not sure this is in embedded rust...
-                // Err(ref e) if e.kind() == Error::Interrupted => continue,
-                Err(e) => bail!("Error reading HTML: {}", e)
-            };
+        let mut total_bytes_read = 0u8;
 
-            match std::str::from_utf8(&buf[..bytes_read]) {
-                Ok(text) => {
-                    println!("{}", text);
-                    bytes_read += len;
+        loop {
+            match body.read(&mut buf) {
+                Ok(0) => (),
+                Ok(bytes_read) => {
+                    match std::str::from_utf8(&buf[0..bytes_read]) {
+                        Ok(text) => {
+                            println!("{}", text);
+                        },
+                        Err(e) => bail!("Uh-oh, could read that HTML: {}", e)
+                    }
+                    total_bytes_read += bytes_read as u8;
+                    return Ok(());
                 },
-                Err(e) => bail!("Error decoding response body: {}", e)
+                Err(e) => bail!("Error reading from buffer: {}", e)
             }
         }
+
     } else {
         let err_msg = format!("Error fetching url: {}", url.as_ref());
         bail!("{}", &err_msg)
