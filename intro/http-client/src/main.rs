@@ -10,6 +10,7 @@ use esp_idf_svc::{
     http::client::{Configuration, EspHttpConnection},
 };
 use wifi::wifi;
+use anyhow::bail;
 
 
 // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
@@ -64,21 +65,26 @@ fn get(url: impl AsRef<str>) -> Result<()> {
     if ok_status_range.contains(&status) {
         let (_headers, mut body) = resp.split();
         let mut buf = [0u8; 1024];
-        let bytes_read = io::try_read_full(&mut body, &mut buf).map_err(|e| e.0)?;
-        println!("Read {} bytes", bytes_read);
+        let mut bytes_read = 0;
+        loop {
+            let len = match body.read(&mut buf) {
+                Ok(0) => return Ok(()),
+                Ok(len) => len,
+                // Not sure this is in embedded rust...
+                // Err(ref e) if e.kind() == Error::Interrupted => continue,
+                Err(e) => bail!("Error reading HTML: {}", e)
+            };
 
-        match std::str::from_utf8(&buf[0..bytes_read]) {
-            Ok(body_string) => println!(
-            "Response body (truncated to {} bytes): {:?}",
-            buf.len(),
-            body_string
-        ),
-            Err(e) => println!("Error decoding response body: {}", e),
-        };
+            match std::str::from_utf8(&buf[..bytes_read]) {
+                Ok(text) => {
+                    println!("{}", text);
+                    bytes_read += len;
+                },
+                Err(e) => bail!("Error decoding response body: {}", e)
+            }
+        }
     } else {
         let err_msg = format!("Error fetching url: {}", url.as_ref());
-        println!("{}", &err_msg);
+        bail!("{}", &err_msg)
     }
-
-    Ok(())
 }
