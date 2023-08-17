@@ -41,15 +41,23 @@ fn main() -> Result<()> {
         sysloop,
     )?;
 
-    get("http://neverssl.com/")?;
+    //get("http://neverssl.com/")?;
+    get("https://espressif.com")?;
 
     Ok(())
 }
 
 fn get(url: impl AsRef<str>) -> Result<()> {
     // 1. Create a new EspHttpConnection with default Configuration. (Check documentation)
-    let default_config = Configuration::default();
-    let conn = EspHttpConnection::new(&default_config);
+    // This is just for http
+    // let default_config = Configuration::default();
+    // let conn = EspHttpConnection::new(&default_config);
+
+    let mut config =  Configuration::default().clone();
+    config.use_global_ca_store = true;
+    config.crt_bundle_attach = Some(esp_idf_sys::esp_crt_bundle_attach);
+    let conn = EspHttpConnection::new(&config);
+
     // 2. Get a client using the Client::wrap method. (Check documentation)
     let mut client = HttpClient::wrap(conn?);
 
