@@ -60,12 +60,24 @@ fn main() -> Result<()> {
         .unwrap();
 
     // 1.Create a `EspHttpServer` instance using a default configuration
-    // let mut server = EspHttpServer::new(...)?;
+    let config = Configuration::default().clone();
+    let mut server = EspHttpServer::new(&config)?;
 
     // 2. Write a handler that returns the index page
-    // server.fn_handler("/", Method::Get, |request| {
-    // ...
-    //})?;
+    server.fn_handler("/", Method::Get, move |request| {
+        let temp = Arc::clone(&temp_sensor)
+            .lock()
+            .unwrap()
+            .get_measurement_result()
+            .unwrap()
+            .temperature
+            .as_degrees_celsius();
+
+        request.into_ok_response()?
+            .write_all(temperature(temp).as_bytes())?;
+
+        Ok(())
+    })?;
 
     // This is not true until you actually create one
     println!("Server awaiting connection");
