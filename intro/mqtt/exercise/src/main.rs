@@ -82,14 +82,18 @@ fn main() -> Result<()> {
         format!("mqtt://{}", app_config.mqtt_host)
     };
 
-    let mqtt_config = MqttClientConfiguration::default();
+    let mut mqtt_config = MqttClientConfiguration::default();
 
     // Your Code:
 
     // 1. Create a client with default configuration and empty handler
     // let mut client = EspMqttClient::new( ... )?;
+    let mut mqtt_client = EspMqttClient::new(broker_url, &mqtt_config, move|message_event| {
+
+    })?;
 
     // 2. publish an empty hello message
+    mqtt_client.publish(&hello_topic(UUID),QoS::AtLeastOnce, false, "Live from 10-5".as_bytes());
 
     loop {
         sleep(Duration::from_secs(1));

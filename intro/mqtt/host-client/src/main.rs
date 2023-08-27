@@ -8,7 +8,7 @@ const UUID: &'static str = get_uuid::uuid();
 #[derive(Debug)]
 #[toml_cfg::toml_config]
 pub struct Config {
-    #[default("localhost")]
+    #[default("test.mosquitto.org")]
     mqtt_host: &'static str,
     #[default("")]
     mqtt_user: &'static str,
