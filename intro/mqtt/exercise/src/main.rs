@@ -15,7 +15,7 @@ use esp_idf_svc::{
     mqtt::client::{EspMqttClient, EspMqttMessage, MqttClientConfiguration},
 };
 use log::{error, info};
-use mqtt_messages::{cmd_topic_fragment, hello_topic, Command, RawCommandData};
+use mqtt_messages::{cmd_topic_fragment, hello_topic, temperature_data_topic, Command, RawCommandData};
 use rgb_led::{RGB8, WS2812RMT};
 use shtcx::{self, shtc3, PowerMode};
 use std::{borrow::Cow, convert::TryFrom, thread::sleep, time::Duration};
@@ -93,7 +93,7 @@ fn main() -> Result<()> {
     })?;
 
     // 2. publish an empty hello message
-    mqtt_client.publish(&hello_topic(UUID),QoS::AtLeastOnce, false, "Live from 10-5".as_bytes());
+    mqtt_client.publish(&hello_topic(UUID),QoS::AtLeastOnce, false, "".as_bytes());
 
     loop {
         sleep(Duration::from_secs(1));
@@ -104,5 +104,9 @@ fn main() -> Result<()> {
 
         // 3. publish CPU temperature
         // client.publish( ... )?;
+        let temp_topic = format!("temperatura/{}", UUID);
+        let temp_val = temp.to_string();
+
+        mqtt_client.publish(&temperature_data_topic(UUID), QoS::AtLeastOnce, false, temp_val.as_bytes());
     }
 }
