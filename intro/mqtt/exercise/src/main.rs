@@ -14,8 +14,8 @@ use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     mqtt::client::{EspMqttClient, EspMqttMessage, MqttClientConfiguration},
 };
-use log::{error, info};
-use mqtt_messages::{cmd_topic_fragment, hello_topic, temperature_data_topic, Command, RawCommandData};
+use log::{error, info, warn};
+use mqtt_messages::{cmd_topic_fragment, hello_topic, temperature_data_topic, Command, RawCommandData, ColorData};
 use rgb_led::{RGB8, WS2812RMT};
 use shtcx::{self, shtc3, PowerMode};
 use std::{borrow::Cow, convert::TryFrom, thread::sleep, time::Duration};
@@ -88,12 +88,19 @@ fn main() -> Result<()> {
 
     // 1. Create a client with default configuration and empty handler
     // let mut client = EspMqttClient::new( ... )?;
-    let mut mqtt_client = EspMqttClient::new(broker_url, &mqtt_config, move|message_event| {
-
+    let mut mqtt_client = EspMqttClient::new(broker_url, &mqtt_config, move|message_event| match message_event {
+        Ok(Received(msg)) => process_message(msg, &mut led),
+        // Ok(Published(msg)) => process_message(msg, &mut led),
+        _ => warn!("Received from MQTT: {:?}", message_event)
     })?;
 
     // 2. publish an empty hello message
     mqtt_client.publish(&hello_topic(UUID),QoS::AtLeastOnce, false, "".as_bytes());
+
+    // dummy color just to get a topic, this is dumb...
+    let color = RGB8::new(0, 0, 0);
+    let color = ColorData::BoardLed(color);
+    mqtt_client.subscribe(&color.topic(UUID), QoS::AtLeastOnce);
 
     loop {
         sleep(Duration::from_secs(1));
@@ -107,6 +114,28 @@ fn main() -> Result<()> {
         let temp_topic = format!("temperatura/{}", UUID);
         let temp_val = temp.to_string();
 
+        println!("temp: {:?} | {}", &temp_val.as_bytes(), &temp_val);
+
         mqtt_client.publish(&temperature_data_topic(UUID), QoS::AtLeastOnce, false, temp_val.as_bytes());
     }
+}
+
+fn process_message(msg: &EspMqttMessage, led: &mut WS2812RMT) {
+    match msg.details() {
+        // All messages in this exercise will be of type `Complete`
+        // The other variants of the `Details` enum are for larger message payloads
+        Complete => {
+
+            // Cow<&[u8]> can be coerced into a slice &[u8] or a Vec<u8>
+            // You can coerce it into a slice to be sent to try_from()
+            let message_data: &[u8] = &msg.data();
+            if let Ok(ColorData::BoardLed(color)) = ColorData::try_from(message_data) {
+                info!("COLOR: {:?}", color);
+                led.set_pixel(RGB8::new(color.r, color.g, color.b));
+            }
+        }
+        _ => error!("Epic fail! P0wnage")
+        // Use Rust Analyzer to generate the missing match arms or match an incomplete message with a log message.
+    }
+
 }

@@ -38,6 +38,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let color = RGB8::new(r, g, b);
             println!("Setting new color: {}", color);
             let color = ColorData::BoardLed(color);
+            println!("The color topic is: {}", color.topic(UUID));
             client
                 .publish(color.topic(UUID), QoS::AtLeastOnce, false, color.data())
                 .unwrap();
@@ -60,6 +61,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 let data: Result<[u8; 4], _> = data.try_into();
 
                 if let Ok(data) = data {
+                    println!("raw data: {:?}", &data);
                     let temp: f32 = f32::from_be_bytes(data);
                     println!("Board temperature: {:.2}°C", temp)
                 }
