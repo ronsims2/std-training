@@ -89,7 +89,7 @@ fn main() -> Result<()> {
     // 1. Create a client with default configuration and empty handler
     // let mut client = EspMqttClient::new( ... )?;
     let mut mqtt_client = EspMqttClient::new(broker_url, &mqtt_config, move|message_event| match message_event {
-        Ok(Received(msg)) => process_message(msg, &mut led),
+        Ok(Received(msg)) => process_msg(msg, &mut led),
         // Ok(Published(msg)) => process_message(msg, &mut led),
         _ => warn!("Received from MQTT: {:?}", message_event)
     })?;
@@ -98,9 +98,12 @@ fn main() -> Result<()> {
     mqtt_client.publish(&hello_topic(UUID),QoS::AtLeastOnce, false, "".as_bytes());
 
     // dummy color just to get a topic, this is dumb...
-    let color = RGB8::new(0, 0, 0);
-    let color = ColorData::BoardLed(color);
-    mqtt_client.subscribe(&color.topic(UUID), QoS::AtLeastOnce);
+    // let color = RGB8::new(0, 0, 0);
+    // let color = ColorData::BoardLed(color);
+    // mqtt_client.subscribe(&color.topic(UUID), QoS::AtLeastOnce);
+
+    let all_topics = format!("{}/#", UUID);
+    mqtt_client.subscribe(&all_topics, QoS::AtLeastOnce);
 
     loop {
         sleep(Duration::from_secs(1));
@@ -138,4 +141,17 @@ fn process_message(msg: &EspMqttMessage, led: &mut WS2812RMT) {
         // Use Rust Analyzer to generate the missing match arms or match an incomplete message with a log message.
     }
 
+}
+
+fn process_msg(msg: &EspMqttMessage, led: &mut WS2812RMT) {
+    match msg.details() {
+        Complete => {
+            info!("MESSAGE: {:?}", msg);
+            let message_data: &[u8] = &msg.data();
+            if let Ok(ColorData::BoardLed(color)) = ColorData::try_from(message_data) {
+                led.set_pixel(RGB8::new(color.r, color.g, color.b));
+            }
+        }
+        _ => error!("Uh-oh, soemthign went waaaay bad...")
+    }
 }
