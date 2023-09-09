@@ -1,6 +1,7 @@
 use anyhow::Result;
 use embedded_hal::blocking::delay::DelayMs;
 use esp_idf_hal::{
+    delay,
     delay::FreeRtos,
     i2c::{I2cConfig, I2cDriver},
     peripherals::Peripherals,
@@ -30,6 +31,7 @@ fn main() -> Result<()> {
     let i2c = peripherals.i2c0;
     let i2c = I2cDriver::new(i2c, sda, scl, &config)?;
     let mut temp_sensor = shtc3(i2c);
+    let mut delay = delay::Ets;
 
     // 4. Read and print the sensor's device ID.
 
@@ -37,6 +39,12 @@ fn main() -> Result<()> {
         // 5. This loop initiates measurements, reads values and prints humidity in % and Temperature in °C.
         let temp_sensor_id = temp_sensor.raw_id_register().unwrap();
         info!("Sensor ID: {}", temp_sensor_id);
+        let temp = temp_sensor
+            .measure_temperature(PowerMode::NormalMode, &mut delay)
+            .unwrap()
+            .as_degrees_celsius();
+
+        info!("Board temp: {}°C", temp);
 
         FreeRtos.delay_ms(500u32);
     }
