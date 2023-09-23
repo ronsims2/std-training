@@ -57,8 +57,15 @@ fn main() -> Result<()> {
 
         info!("Board temp: {}°C", temp);
 
-        let icm_id = icm.device_id().unwrap();
-        info!("Accelerometer ID: {}", icm_id);
+        let humidity = temp_sensor
+            .measure_humidity(PowerMode::NormalMode, &mut delay)
+            .unwrap()
+            .as_percent();
+
+        info!("Ambient humidity: {:.1}%", humidity);
+
+        let gyro_data = icm.gyro_raw().unwrap();
+        info!("Gyroscope data: {:?}", gyro_data);
 
         FreeRtos.delay_ms(500u32);
     }
