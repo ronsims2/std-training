@@ -25,6 +25,7 @@ anyhow = "=1.0.71"
 esp-idf-hal = "=0.41.1"
 esp-idf-sys = { version = "=0.33.0", features = ["binstart"] }
 rgb-led = { path = "../../common/lib/rgb-led" }
+log = "=0.4.18"
 
 [build-dependencies]
 anyhow = "=1.0.71"
