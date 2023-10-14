@@ -1,15 +1,15 @@
 // Reference: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/freertos.html
 use anyhow::Result;
 use esp_idf_sys::{
-    esp, esp_random, gpio_config, gpio_config_t, gpio_install_isr_service,
+    esp, gpio_config, gpio_config_t, gpio_install_isr_service,
     gpio_int_type_t_GPIO_INTR_POSEDGE, gpio_isr_handler_add, gpio_mode_t_GPIO_MODE_INPUT,
     xQueueGenericCreate, xQueueGiveFromISR, xQueueReceive, QueueHandle_t, ESP_INTR_FLAG_IRAM,
 };
-use std::ptr;
+
 
 // These imports are needed for part 2.
-use rgb_led::{RGB8, WS2812RMT};
-use log::{error, info, warn};
+
+use log::{info};
 
 // 4. Create a `static mut` that holds the queue handle.
 static mut EVENT_QUEUE: Option<QueueHandle_t> = None;
@@ -38,11 +38,11 @@ fn main() -> Result<()> {
     unsafe {
         // 2. Write the GPIO configuration into the register
         // esp!(...)?;
-        esp!(gpio_config(&io_conf));
+        esp!(gpio_config(&io_conf))?;
 
         // 3. Install the global GPIO interrupt handler
         // esp!(...)?;
-        esp!(gpio_install_isr_service(ESP_INTR_FLAG_IRAM.try_into().unwrap()));
+        esp!(gpio_install_isr_service(ESP_INTR_FLAG_IRAM.try_into().unwrap()))?;
 
         // Queue configurations
         const QUEUE_TYPE_BASE: u8 = 0;
@@ -67,9 +67,10 @@ fn main() -> Result<()> {
             // 8. Receive the event from the queue.
             // let res = ...;
             let res = xQueueReceive(EVENT_QUEUE.unwrap(), std::ptr::null_mut(), QUEUE_WAIT_TICKS);
-            if res > 0 {
-                info!("The button has been pressed, result: {}", res);
-            }
+            match res {
+                1 => info!("The button has been pressed, result: {}", res),
+                _ => {}
+            };
 
 
             // 9. Handle the value of res.
